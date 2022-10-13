@@ -1,0 +1,52 @@
+apiVersion: apps/v1 #Which version of the Kubernetes API you're using to create this object
+kind: Deployment # What kind of object you want to create [deployment, service etc]
+metadata: # Data that helps uniquely identify the object, including a name string, UID, and optional namespace
+  name: hellogopher
+  namespace: khelloworld
+spec: #  What state you desire for the object
+  selector: # Define what selectors the Deployment uses to find the PODS that are related to it
+    matchLabels: # matchLabels is a map of {key,value} pairs. 
+      app: hellogopher
+  replicas: 1 # Tells the deployment to run 1 pod 
+  template: # When creating new pods, this template will be used
+    metadata:
+      labels: # Labels used when searching / managing deployments
+        app: hellogopher
+    spec:
+      containers:
+      - name: hellogo # Name of the Container
+        image: minikube/hellogopher:5.0 # Important, to not use latest tag as it will try DOckerhub then
+        imagePullPolicy: IfNotPresent # Will only pull from DockerHub if not present already in Local docker
+        envFrom: # Use this to assign a whole ConfigMap
+        - configMapRef:
+            name: db-config # Just specify your configmap name
+        env:
+        - name: DATABASE_PASSWORD
+          valueFrom: 
+            secretKeyRef: # This is used to fetch value from secret, should be base64 encoded
+              name: db-secrets # Name of our secrets object
+              key: DATABASE_PASSWORD # The secret key to fetch value from
+        resources: # Here we start the Resource section 
+          requests: # Requests are the minimum available resources a Node needs to be accepted as a valid node
+            memory: "1Mi"
+            cpu: "50m"
+          limits: # Limits is the maximum amount of resource the pods are allowed to use
+            memory: "10Mi"
+            cpu: "100m" # 0.1 Is not allowed, instead we use 100m which is the same
+        ports: # Ports to Expose
+        - containerPort: 8080
+        readinessProbe:
+          initialDelaySeconds: 5 # Time before starting to Probe status
+          timeoutSeconds: 1 # Time to wait before timeout
+          # HTTP probe
+          httpGet:
+            path: / # the path we use to probe
+            port: 8080
+        livenessProbe:
+          initialDelaySeconds: 5 # Time before starting to Probe status
+          timeoutSeconds: 1 # Time to wait before timeout
+          failureThreshold: 3 # How many times it can fail before restarting
+          # HTTP probe
+          httpGet:
+            path: / # the path we use to probe
+            port: 8080
